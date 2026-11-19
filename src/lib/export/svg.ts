@@ -10,6 +10,8 @@ import type { DesignElement, Page, Paint, ProjectDoc, Shadow, TextElement } from
 import { maskSvgPath, shapePath } from "@/lib/design/shapes";
 import { coverCrop, transformText } from "@/lib/design/render";
 import { patternTileSvg } from "@/lib/design/patterns";
+import { curveGeometry, effectLayers } from "@/lib/design/text-effects";
+import { FONTS, resolveDirection } from "@/lib/design/fonts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -63,6 +65,66 @@ function wrapLines(el: TextElement): string[] {
   return out;
 }
 
+
+function measureLine(el: TextElement, text: string) {
+  const c = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+  if (!c) return text.length * el.fontSize * 0.55;
+  c.font = `${el.italic ? "italic " : ""}${el.fontWeight} ${el.fontSize}px "${el.fontFamily}"`;
+  return c.measureText(text).width + Math.max(0, text.length - 1) * el.letterSpacing;
+}
+
+/** SVG for a text element, including effects (offset copies, strokes, glows), curves and RTL. */
+function textSvg(el: TextElement, ctx: Ctx): string {
+  const w = el.width, h = el.height;
+  const rtl = resolveDirection(el.text, el.direction) === "rtl";
+  const deco = [el.underline ? "underline" : "", el.strike ? "line-through" : ""].filter(Boolean).join(" ");
+  let out = "";
+  if (el.background?.color) {
+    const p = el.background.padding;
+    out += `<rect x="${-p}" y="${-p}" width="${w + 2 * p}" height="${h + 2 * p}" rx="${el.background.radius}" fill="${esc(el.background.color)}"/>`;
+  }
+  const baseFill = paint(el.fill, ctx, w, h);
+  const fx = effectLayers(el);
+  const fontAttrs = `font-family="${esc(el.fontFamily)}, sans-serif" font-size="${el.fontSize}" font-weight="${el.fontWeight}" font-style="${el.italic ? "italic" : "normal"}" letter-spacing="${el.letterSpacing}"${deco ? ` text-decoration="${deco}"` : ""}${rtl ? ` direction="rtl" unicode-bidi="embed"` : ""}`;
+
+  // content: straight (wrapped lines) or along an arc
+  let body: string;
+  let anchorAttr: string;
+  const curve = el.curve ? curveGeometry(el.curve, measureLine(el, transformText(el).replace(/\s*\n\s*/g, " ")), el.fontSize) : null;
+  if (curve) {
+    const pid = `tp${ctx.n++}`;
+    ctx.defs.push(`<path id="${pid}" d="${curve.path}" fill="none"/>`);
+    anchorAttr = ` text-anchor="middle" dominant-baseline="middle"`;
+    body = `<textPath href="#${pid}" startOffset="50%">${esc(transformText(el).replace(/\s*\n\s*/g, " "))}</textPath>`;
+  } else {
+    const lines = wrapLines(el);
+    const lh = el.fontSize * el.lineHeight;
+    // with direction=rtl, SVG "start" is the right edge
+    const anchor = el.align === "center" ? "middle" : (el.align === "right") !== rtl ? "end" : "start";
+    const x = el.align === "center" ? w / 2 : el.align === "right" ? w : 0;
+    anchorAttr = ` text-anchor="${anchor}"`;
+    // Konva places each line box of height lh; the baseline sits ~0.8em below the glyph top
+    body = lines.map((l, i) => `<tspan x="${x}" y="${i * lh + (lh - el.fontSize) / 2 + el.fontSize * 0.8}">${esc(l) || " "}</tspan>`).join("");
+  }
+
+  const render = (o: Record<string, unknown>, dx = 0, dy = 0) => {
+    const fill = typeof o.fill === "string" ? esc(o.fill as string) : baseFill;
+    const sw = (o.strokeWidth as number | undefined) ?? el.strokeWidth ?? 0;
+    const sc = (o.stroke as string | undefined) ?? el.stroke ?? "#000";
+    const stroke = sw ? ` stroke="${esc(sc)}" stroke-width="${sw}" paint-order="stroke"` : "";
+    const opacity = o.opacity !== undefined ? ` opacity="${o.opacity}"` : "";
+    let filter = "";
+    if (o.shadowEnabled === true) {
+      filter = shadowFilter({ enabled: true, color: String(o.shadowColor), blur: Number(o.shadowBlur), offsetX: Number(o.shadowOffsetX), offsetY: Number(o.shadowOffsetY), opacity: Number(o.shadowOpacity) }, ctx);
+    } else if (o.shadowEnabled !== false) filter = shadowFilter(el.shadow, ctx);
+    const tr = dx || dy ? ` transform="translate(${dx} ${dy})"` : "";
+    return `<text ${fontAttrs}${anchorAttr} fill="${fill}"${stroke}${opacity}${filter}${tr} xml:space="preserve">${body}</text>`;
+  };
+  fx.behind.forEach((l) => (out += render(l.overrides, l.dx, l.dy)));
+  out += render(fx.main);
+  return out;
+}
+
 async function elementSvg(el: DesignElement, ctx: Ctx): Promise<string> {
   if (el.hidden) return "";
   const w = el.width, h = el.height;
@@ -95,20 +157,7 @@ async function elementSvg(el: DesignElement, ctx: Ctx): Promise<string> {
       break;
     }
     case "text": {
-      const lines = wrapLines(el);
-      const lh = el.fontSize * el.lineHeight;
-      const anchor = el.align === "center" ? "middle" : el.align === "right" ? "end" : "start";
-      const x = el.align === "center" ? w / 2 : el.align === "right" ? w : 0;
-      const deco = [el.underline ? "underline" : "", el.strike ? "line-through" : ""].filter(Boolean).join(" ");
-      if (el.background?.color) {
-        const p = el.background.padding;
-        inner += `<rect x="${-p}" y="${-p}" width="${w + 2 * p}" height="${h + 2 * p}" rx="${el.background.radius}" fill="${esc(el.background.color)}"/>`;
-      }
-      const fill = paint(el.fill, ctx, w, h);
-      const stroke = el.strokeWidth ? ` stroke="${esc(el.stroke ?? "#000")}" stroke-width="${el.strokeWidth}" paint-order="stroke"` : "";
-      // Konva places each line box of height lh; the baseline sits ~ (lh + fontSize*0.7)/2 from its top
-      const tspans = lines.map((l, i) => `<tspan x="${x}" y="${i * lh + (lh - el.fontSize) / 2 + el.fontSize * 0.8}">${esc(l) || " "}</tspan>`).join("");
-      inner += `<text font-family="${esc(el.fontFamily)}, sans-serif" font-size="${el.fontSize}" font-weight="${el.fontWeight}" font-style="${el.italic ? "italic" : "normal"}" letter-spacing="${el.letterSpacing}" text-anchor="${anchor}" fill="${fill}"${deco ? ` text-decoration="${deco}"` : ""}${stroke}${shadowFilter(el.shadow, ctx)} xml:space="preserve">${tspans}</text>`;
+      inner += textSvg(el, ctx);
       break;
     }
     case "image": {
@@ -165,7 +214,7 @@ export async function pageToSvg(
   for (const el of page.elements) els.push(await elementSvg(el, ctx));
   const fonts = [...new Set(page.elements.filter((e): e is TextElement => e.type === "text").map((e) => e.fontFamily))];
   const fontImport = fonts.length
-    ? `<style>@import url('https://fonts.googleapis.com/css2?${fonts.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, "+")}:wght@400;700`).join("&")}&display=swap');</style>`
+    ? `<style><![CDATA[@import url('https://fonts.googleapis.com/css2?${fonts.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, "+")}:wght@${(FONTS.find((d) => d.family === f)?.weights ?? [400, 700]).join(";")}`).join("&")}&display=swap');]]></style>`
     : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">

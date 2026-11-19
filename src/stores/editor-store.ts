@@ -22,7 +22,7 @@ const HISTORY_LIMIT = 100;
 const COALESCE_MS = 900;
 
 /** Text height measurement is injected by the canvas (needs the DOM). */
-let measureText: (el: Extract<DesignElement, { type: "text" }>) => number = (el) => el.height;
+let measureText: (el: Extract<DesignElement, { type: "text" }>) => number | { width: number; height: number } = (el) => el.height;
 export function registerTextMeasurer(fn: typeof measureText) {
   measureText = fn;
 }
@@ -173,8 +173,15 @@ export const useEditor = create<EditorState>()((set, get) => {
 
   const refitText = (el: Draft<DesignElement>) => {
     if (el.type === "text") {
-      const h = measureText(el as Extract<DesignElement, { type: "text" }>);
-      if (h && Math.abs(h - el.height) > 0.5) el.height = h;
+      const m = measureText(el as Extract<DesignElement, { type: "text" }>);
+      if (typeof m === "number") {
+        if (m && Math.abs(m - el.height) > 0.5) el.height = m;
+      } else if (Math.abs(m.width - el.width) > 0.5 || Math.abs(m.height - el.height) > 0.5) {
+        // curved text: keep the box centred while its arc size changes
+        el.x += (el.width - m.width) / 2;
+        el.width = m.width;
+        el.height = m.height;
+      }
     }
   };
 

@@ -2,7 +2,7 @@
  * Font catalogue. Fonts are open-license Google Fonts loaded on demand via the
  * CSS API; canvas text re-renders once the face is available.
  */
-export type FontDef = { family: string; category: "sans" | "serif" | "display" | "script" | "mono"; weights: number[] };
+export type FontDef = { family: string; category: "sans" | "serif" | "display" | "script" | "mono" | "arabic"; weights: number[] };
 
 export const FONTS: FontDef[] = [
   { family: "Inter", category: "sans", weights: [300, 400, 500, 600, 700, 800, 900] },
@@ -36,6 +36,20 @@ export const FONTS: FontDef[] = [
   { family: "Great Vibes", category: "script", weights: [400] },
   { family: "Caveat", category: "script", weights: [400, 500, 600, 700] },
   { family: "Satisfy", category: "script", weights: [400] },
+  // Arabic (all also include Latin glyphs)
+  { family: "Cairo", category: "arabic", weights: [300, 400, 500, 600, 700, 800, 900] },
+  { family: "Tajawal", category: "arabic", weights: [300, 400, 500, 700, 800, 900] },
+  { family: "Almarai", category: "arabic", weights: [300, 400, 700, 800] },
+  { family: "Noto Kufi Arabic", category: "arabic", weights: [300, 400, 500, 600, 700, 800, 900] },
+  { family: "Noto Naskh Arabic", category: "arabic", weights: [400, 500, 600, 700] },
+  { family: "Amiri", category: "arabic", weights: [400, 700] },
+  { family: "El Messiri", category: "arabic", weights: [400, 500, 600, 700] },
+  { family: "Changa", category: "arabic", weights: [300, 400, 500, 600, 700, 800] },
+  { family: "Reem Kufi", category: "arabic", weights: [400, 500, 600, 700] },
+  { family: "Readex Pro", category: "arabic", weights: [300, 400, 500, 600, 700] },
+  { family: "Lalezar", category: "arabic", weights: [400] },
+  { family: "Aref Ruqaa", category: "arabic", weights: [400, 700] },
+  { family: "Lemonada", category: "arabic", weights: [300, 400, 500, 600, 700] },
   { family: "JetBrains Mono", category: "mono", weights: [300, 400, 500, 700, 800] },
   { family: "Space Mono", category: "mono", weights: [400, 700] },
 ];
@@ -59,7 +73,7 @@ export function fontCssUrl(families: string[]) {
       const ital = weights.flatMap((w) => [`0,${w}`]).concat(weights.map((w) => `1,${w}`));
       // Not every family ships italics; Google gracefully synthesises if the axis is absent
       // only when we request the plain list, so request both only for families known to have them.
-      const hasItalic = !["display", "script"].includes(def?.category ?? "sans") && !["Bebas Neue", "Space Grotesk", "Outfit", "Plus Jakarta Sans"].includes(f);
+      const hasItalic = !["display", "script", "arabic"].includes(def?.category ?? "sans") && !["Bebas Neue", "Space Grotesk", "Outfit", "Plus Jakarta Sans"].includes(f);
       const spec = hasItalic ? `ital,wght@${ital.sort().join(";")}` : `wght@${weights.join(";")}`;
       return `family=${encodeURIComponent(f).replace(/%20/g, "+")}:${spec}`;
     })
@@ -95,4 +109,17 @@ export async function ensureFonts(families: string[], timeoutMs = 4000): Promise
 
 export function isFontLoaded(family: string) {
   return loaded.has(family);
+}
+
+const RTL_RE = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+
+/** True when the string contains Arabic/Hebrew script. */
+export function hasRtlChars(s: string) {
+  return RTL_RE.test(s);
+}
+
+/** Resolve a text element's effective direction. */
+export function resolveDirection(text: string, dir: "auto" | "ltr" | "rtl" | undefined): "ltr" | "rtl" {
+  if (dir === "ltr" || dir === "rtl") return dir;
+  return hasRtlChars(text) ? "rtl" : "ltr";
 }

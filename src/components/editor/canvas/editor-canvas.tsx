@@ -15,7 +15,7 @@ import { useShallow } from "zustand/react/shallow";
 import { selectActivePage, useEditor, registerTextMeasurer } from "@/stores/editor-store";
 import type { DesignElement, TextElement } from "@/lib/design/types";
 import { elementBounds, snapBox, unionBounds, boxesIntersect, type Guide } from "@/lib/design/geometry";
-import { measureTextHeight } from "@/lib/design/render";
+import { measureTextBox } from "@/lib/design/render";
 import { ensureFonts, onFontsLoaded } from "@/lib/design/fonts";
 import { ElementNode, type ElementHandlers } from "./element-node";
 import { PageBackgroundNode } from "./page-background";
@@ -26,7 +26,7 @@ import { dropImageIntoFrame, insertPayload, type InsertPayload } from "@/lib/edi
 import { useRepo } from "@/components/providers/repository-provider";
 import { uploadImageFile } from "@/lib/assets";
 
-registerTextMeasurer(measureTextHeight);
+registerTextMeasurer(measureTextBox);
 Konva.pixelRatio = typeof window !== "undefined" ? Math.min(2, window.devicePixelRatio || 1) : 1;
 
 const PAD = 64;
@@ -255,7 +255,12 @@ export default function EditorCanvas() {
         patch.width = Math.max(10, el.width * sx);
       } else if (el.type === "text") {
         const t = patch as Partial<TextElement>;
-        if (anchor === "middle-left" || anchor === "middle-right") {
+        if (el.curve) {
+          // curved text box is derived from the arc: any handle scales the type
+          const f = anchor === "top-center" || anchor === "bottom-center" ? sy : sx;
+          t.fontSize = Math.max(4, Math.round(el.fontSize * f * 10) / 10);
+          t.letterSpacing = el.letterSpacing * f;
+        } else if (anchor === "middle-left" || anchor === "middle-right") {
           t.width = Math.max(20, el.width * sx); // reflow, keep type size
         } else if (anchor === "top-center" || anchor === "bottom-center") {
           t.fontSize = Math.max(4, Math.round(el.fontSize * sy * 10) / 10); // scale type, keep width

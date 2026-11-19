@@ -88,3 +88,34 @@ describe("style tools", () => {
     expect(patches[0].patch.x).toBe(400);
   });
 });
+
+import { curveGeometry, effectLayers, defaultEffect } from "@/lib/design/text-effects";
+import { hasRtlChars, resolveDirection } from "@/lib/design/fonts";
+
+describe("text features", () => {
+  it("detects RTL text", () => {
+    expect(hasRtlChars("مرحبا")).toBe(true);
+    expect(resolveDirection("Hello", "auto")).toBe("ltr");
+    expect(resolveDirection("رمضان كريم", "auto")).toBe("rtl");
+    expect(resolveDirection("رمضان", "ltr")).toBe("ltr");
+  });
+  it("computes curved text geometry", () => {
+    expect(curveGeometry(0, 500, 50)).toBeNull();
+    const up = curveGeometry(50, 600, 40)!;
+    const down = curveGeometry(-50, 600, 40)!;
+    expect(up.width).toBeGreaterThan(0);
+    expect(up.height).toBeCloseTo(down.height, 5);
+    expect(up.path.startsWith("M")).toBe(true);
+  });
+  it("builds effect layers", () => {
+    const el = createText({ fontSize: 100, effect: defaultEffect("glitch") });
+    expect(effectLayers(el).behind).toHaveLength(2);
+    const hollow = effectLayers(createText({ fontSize: 100, effect: defaultEffect("hollow") }));
+    expect(hollow.main.strokeWidth).toBeGreaterThan(0);
+  });
+  it("has many templates incl. Arabic, with unique ids", () => {
+    expect(BUILTIN_TEMPLATES.length).toBeGreaterThanOrEqual(100);
+    expect(new Set(BUILTIN_TEMPLATES.map((t) => t.id)).size).toBe(BUILTIN_TEMPLATES.length);
+    expect(BUILTIN_TEMPLATES.filter((t) => t.tags.includes("arabic")).length).toBeGreaterThanOrEqual(15);
+  });
+});

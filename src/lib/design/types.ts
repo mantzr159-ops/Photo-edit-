@@ -89,6 +89,22 @@ export interface LineElement extends BaseElement {
 
 export type TextAlign = "left" | "center" | "right" | "justify";
 
+export type TextEffectType = "none" | "shadow" | "lift" | "hollow" | "splice" | "outline" | "echo" | "glitch" | "neon";
+
+export interface TextEffect {
+  type: TextEffectType;
+  /** effect colour (shadow / outline / echo / glow) */
+  color: string;
+  /** 0..100 — distance of offsets */
+  offset: number;
+  /** degrees, direction of offsets */
+  direction: number;
+  /** 0..100 — blur / thickness / transparency depending on effect */
+  intensity: number;
+}
+
+export type TextDirection = "auto" | "ltr" | "rtl";
+
 export interface TextElement extends BaseElement {
   type: "text";
   text: string;
@@ -111,6 +127,11 @@ export interface TextElement extends BaseElement {
   textTransform?: "none" | "uppercase" | "lowercase";
   /** preset id used to create this text (heading, body …) */
   preset?: string;
+  /** writing direction; "auto" picks RTL for Arabic/Hebrew text */
+  direction?: TextDirection;
+  /** curved text: -100 (∪) … 0 (straight) … 100 (∩ full circle) */
+  curve?: number;
+  effect?: TextEffect | null;
 }
 
 export type ImageMask = "none" | "circle" | "rounded" | "hexagon" | "blob" | "arch";

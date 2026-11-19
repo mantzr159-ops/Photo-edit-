@@ -35,7 +35,7 @@ export function FontPicker({ value, onChange }: { value: string; onChange: (f: s
               }}
               className={cn("flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left hover:bg-accent", value === f.family && "bg-accent")}
             >
-              <span className="text-[15px]" style={{ fontFamily: `"${f.family}"` }}>{f.family}</span>
+              <span className="text-[15px]" style={{ fontFamily: `"${f.family}"` }}>{f.family}{f.category === "arabic" ? " · أبجد هوز" : ""}</span>
               <span className="flex items-center gap-1 text-[10px] uppercase text-muted-foreground">
                 {f.category}
                 {value === f.family && <Check className="h-3.5 w-3.5 text-brand-500" />}
