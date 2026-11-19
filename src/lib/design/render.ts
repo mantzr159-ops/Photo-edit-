@@ -11,8 +11,10 @@
 import Konva from "konva";
 import type { DesignElement, ImageElement, Paint, PageBackground, Shadow, TextElement } from "./types";
 import { applyMaskClip, shapePath } from "./shapes";
+import { curveGeometry, effectLayers } from "./text-effects";
+import { resolveDirection } from "./fonts";
 
-export type NodeKind = "Group" | "Rect" | "Ellipse" | "Path" | "Line" | "Arrow" | "Text" | "Image" | "Circle";
+export type NodeKind = "Group" | "Rect" | "Ellipse" | "Path" | "Line" | "Arrow" | "Text" | "TextPath" | "Image" | "Circle";
 
 export interface NodeDesc {
   kind: NodeKind;
@@ -101,6 +103,7 @@ export function textKonvaConfig(el: TextElement): Record<string, unknown> {
     letterSpacing: el.letterSpacing,
     width: Math.max(1, el.width),
     wrap: "word",
+    direction: resolveDirection(el.text, el.direction),
     ...paintToKonva(el.fill, el.width, el.height),
     stroke: el.strokeWidth ? el.stroke : undefined,
     strokeWidth: el.strokeWidth || 0,
@@ -110,6 +113,23 @@ export function textKonvaConfig(el: TextElement): Record<string, unknown> {
 }
 
 let measureNode: Konva.Text | null = null;
+
+/** Curved text geometry for an element (null when straight). */
+export function textCurve(el: TextElement) {
+  if (!el.curve) return null;
+  if (!measureNode) measureNode = new Konva.Text();
+  const single = { ...el, text: el.text.replace(/\s*\n\s*/g, " ") };
+  measureNode.setAttrs({ ...textKonvaConfig(single), width: undefined, wrap: "none", height: undefined });
+  return curveGeometry(el.curve, measureNode.width(), el.fontSize);
+}
+
+/** Box size for a text element: height at current width, or the arc box for curved text. */
+export function measureTextBox(el: TextElement): number | { width: number; height: number } {
+  if (typeof window === "undefined") return el.height;
+  const c = el.curve ? textCurve(el) : null;
+  if (c) return { width: Math.ceil(c.width), height: Math.ceil(c.height) };
+  return measureTextHeight(el);
+}
 
 /** Measure the natural height of a text element at its current width. */
 export function measureTextHeight(el: TextElement): number {
@@ -233,7 +253,24 @@ export function describeElement(el: DesignElement, ctx: RenderContext): NodeDesc
           config: { x: -p, y: -p, width: w + p * 2, height: h + p * 2, fill: el.background.color, cornerRadius: el.background.radius },
         });
       }
-      nodes.push({ kind: "Text", key: "t", config: textKonvaConfig(el) });
+      const curve = el.curve ? textCurve(el) : null;
+      const base: Record<string, unknown> = curve
+        ? {
+            ...textKonvaConfig(el),
+            text: transformText(el).replace(/\s*\n\s*/g, " "),
+            data: curve.path,
+            align: "center",
+            textBaseline: "middle",
+            width: undefined,
+            wrap: undefined,
+            lineHeight: undefined,
+            direction: undefined,
+          }
+        : textKonvaConfig(el);
+      const kind: NodeKind = curve ? "TextPath" : "Text";
+      const fx = effectLayers(el);
+      fx.behind.forEach((l, i) => nodes.push({ kind, key: `fx${i}`, config: { ...base, ...l.overrides, x: l.dx, y: l.dy, listening: false } }));
+      nodes.push({ kind, key: "t", config: { ...base, ...fx.main } });
       return nodes;
     }
     case "image": {
@@ -396,6 +433,7 @@ const ctorMap: Record<NodeKind, new (cfg: Record<string, unknown>) => Konva.Node
   Line: Konva.Line as never,
   Arrow: Konva.Arrow as never,
   Text: Konva.Text as never,
+  TextPath: Konva.TextPath as never,
   Image: Konva.Image as never,
   Circle: Konva.Circle as never,
 };

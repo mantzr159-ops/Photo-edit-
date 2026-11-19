@@ -8,6 +8,27 @@ import { useEditor } from "@/stores/editor-store";
 import { measureTextWidth } from "@/lib/design/render";
 import { Button } from "@/components/ui/button";
 import { InsertTile, PanelHeading } from "./panel-ui";
+import { defaultEffect } from "@/lib/design/text-effects";
+import type { TextElement } from "@/lib/design/types";
+
+const ARABIC_STYLES: { label: string; preset: TextPresetId; text: string; props: Partial<TextElement> }[] = [
+  { label: "عنوان رئيسي", preset: "heading", text: "عنوان رئيسي", props: { fontFamily: "Cairo", fontWeight: 800, fontSize: 96, align: "right", direction: "rtl", letterSpacing: 0, lineHeight: 1.3 } },
+  { label: "عنوان فرعي", preset: "subheading", text: "عنوان فرعي", props: { fontFamily: "Tajawal", fontWeight: 700, fontSize: 56, align: "right", direction: "rtl", lineHeight: 1.4 } },
+  { label: "نص عادي للفقرات", preset: "body", text: "أضف نصاً هنا لكتابة فقرة قصيرة", props: { fontFamily: "Almarai", fontWeight: 400, fontSize: 32, align: "right", direction: "rtl", lineHeight: 1.7 } },
+  { label: "خط نسخ", preset: "quote", text: "«الإبداع هو الذكاء وهو يستمتع»", props: { fontFamily: "Amiri", fontWeight: 400, italic: false, fontSize: 52, align: "right", direction: "rtl", lineHeight: 1.6 } },
+  { label: "خط رقعة", preset: "decorative", text: "مبارك", props: { fontFamily: "Aref Ruqaa", fontWeight: 700, fontSize: 110, align: "center", direction: "rtl", lineHeight: 1.4 } },
+  { label: "خط كوفي", preset: "heading", text: "تخفيضات", props: { fontFamily: "Reem Kufi", fontWeight: 700, fontSize: 100, align: "center", direction: "rtl", letterSpacing: 0, lineHeight: 1.3 } },
+  { label: "خط عريض", preset: "heading", text: "عرض خاص", props: { fontFamily: "Lalezar", fontWeight: 400, fontSize: 110, align: "center", direction: "rtl", letterSpacing: 0, lineHeight: 1.3 } },
+];
+
+const EFFECT_STYLES: { label: string; text: string; props: Partial<TextElement>; css: React.CSSProperties }[] = [
+  { label: "Curved", text: "CURVED TEXT", props: { fontFamily: "Montserrat", fontWeight: 800, fontSize: 64, curve: 45, letterSpacing: 4 }, css: { fontFamily: '"Montserrat"', fontWeight: 800, letterSpacing: 2 } },
+  { label: "Neon", text: "Neon Nights", props: { fontFamily: "Righteous", fontWeight: 400, fontSize: 96, fill: "#ffe6fa", effect: defaultEffect("neon") }, css: { fontFamily: '"Righteous"', color: "#ffe6fa", textShadow: "0 0 6px #ff3bd4, 0 0 12px #ff3bd4", background: "#1a0b2e" } },
+  { label: "Hollow", text: "HOLLOW", props: { fontFamily: "Anton", fontWeight: 400, fontSize: 120, effect: defaultEffect("hollow") }, css: { fontFamily: '"Anton"', color: "transparent", WebkitTextStroke: "1.5px #16132b" } },
+  { label: "Splice", text: "SPLICE", props: { fontFamily: "Archivo Black", fontWeight: 400, fontSize: 110, effect: defaultEffect("splice") }, css: { fontFamily: '"Archivo Black"', color: "transparent", WebkitTextStroke: "1.5px #16132b", textShadow: "3px 3px 0 #ffb4c8" } },
+  { label: "Glitch", text: "GLITCH", props: { fontFamily: "Bungee", fontWeight: 400, fontSize: 100, effect: defaultEffect("glitch") }, css: { fontFamily: '"Bungee"', textShadow: "-3px 0 #00f0ff, 3px 0 #ff1f6b" } },
+  { label: "Echo", text: "Echo", props: { fontFamily: "Poppins", fontWeight: 900, fontSize: 110, fill: "#7444ff", effect: { ...defaultEffect("echo")!, color: "#7444ff" } }, css: { fontFamily: '"Poppins"', fontWeight: 900, color: "#7444ff", textShadow: "3px 3px 0 rgba(116,68,255,.45), 6px 6px 0 rgba(116,68,255,.2)" } },
+];
 
 const COMBOS: { heading: string; body: string; title: string; sub: string; accent?: string }[] = [
   { heading: "Playfair Display", body: "Inter", title: "Editorial Story", sub: "A refined serif with a clean sans" },
@@ -21,7 +42,13 @@ const COMBOS: { heading: string; body: string; title: string; sub: string; accen
 
 export function TextPanel() {
   React.useEffect(() => {
-    void ensureFonts([...new Set(COMBOS.flatMap((c) => [c.heading, c.body]).concat(Object.values(TEXT_PRESETS).map((p) => p.props.fontFamily ?? "Inter")))]);
+    void ensureFonts([
+      ...new Set(
+        COMBOS.flatMap((c) => [c.heading, c.body])
+          .concat(Object.values(TEXT_PRESETS).map((p) => p.props.fontFamily ?? "Inter"))
+          .concat(ARABIC_STYLES.map((a) => a.props.fontFamily!), EFFECT_STYLES.map((e) => e.props.fontFamily!)),
+      ),
+    ]);
   }, []);
 
   const addCombo = (c: (typeof COMBOS)[number]) => {
@@ -63,6 +90,22 @@ export function TextPanel() {
             </InsertTile>
           );
         })}
+      </div>
+      <PanelHeading>النصوص العربية · Arabic</PanelHeading>
+      <div className="space-y-2" dir="rtl">
+        {ARABIC_STYLES.map((a) => (
+          <InsertTile key={a.label} payload={{ kind: "text", preset: a.preset, text: a.text, props: a.props }} className="w-full justify-start px-3 py-2.5 text-right" title={a.label}>
+            <span className="truncate" style={{ fontFamily: `"${a.props.fontFamily}"`, fontSize: Math.min(26, (a.props.fontSize ?? 40) / 4), fontWeight: a.props.fontWeight }}>{a.label}</span>
+          </InsertTile>
+        ))}
+      </div>
+      <PanelHeading>Text effects</PanelHeading>
+      <div className="grid grid-cols-2 gap-2">
+        {EFFECT_STYLES.map((e) => (
+          <InsertTile key={e.label} payload={{ kind: "text", preset: "heading", text: e.text, props: e.props }} className="aspect-[4/3] overflow-hidden p-1" title={`${e.label} text`}>
+            <span className="flex h-full w-full items-center justify-center rounded-md text-xl" style={e.css}>{e.label === "Curved" ? "⌒ Curved" : e.label}</span>
+          </InsertTile>
+        ))}
       </div>
       <PanelHeading>Font combinations</PanelHeading>
       <div className="grid grid-cols-2 gap-2">

@@ -1,7 +1,7 @@
 "use client";
 /** Helpers that build ready-to-insert elements sized relative to the design. */
 import { createEmoji, createFrame, createIcon, createImage, createLine, createShape, createTextFromPreset, type TextPresetId } from "@/lib/design/factory";
-import type { DesignElement, ImageElement, LineElement, Paint, ShapeElement, ShapeKind } from "@/lib/design/types";
+import type { DesignElement, ImageElement, LineElement, Paint, ShapeElement, ShapeKind, TextElement } from "@/lib/design/types";
 import { measureTextWidth } from "@/lib/design/render";
 import { useEditor } from "@/stores/editor-store";
 import { canvasApi } from "@/components/editor/canvas/canvas-api";
@@ -9,7 +9,7 @@ import { canvasApi } from "@/components/editor/canvas/canvas-api";
 export type InsertPayload =
   | { kind: "shape"; shape: ShapeKind; fill?: Paint; props?: Partial<ShapeElement> }
   | { kind: "line"; props?: Partial<LineElement> }
-  | { kind: "text"; preset: TextPresetId; text?: string; fontFamily?: string }
+  | { kind: "text"; preset: TextPresetId; text?: string; fontFamily?: string; props?: Partial<TextElement> }
   | { kind: "icon"; icon: string }
   | { kind: "emoji"; emoji: string }
   | { kind: "frame"; mask: ImageElement["mask"] }
@@ -36,6 +36,12 @@ export function payloadToElement(p: InsertPayload): DesignElement {
       el.fontSize = Math.max(8, Math.round(el.fontSize * scale));
       el.letterSpacing *= scale;
       if (p.fontFamily) el.fontFamily = p.fontFamily;
+      if (p.props) {
+        const { fontSize, ...rest } = p.props;
+        Object.assign(el, rest);
+        if (fontSize) el.fontSize = Math.max(8, Math.round(fontSize * scale));
+        if (el.effect && el.effect.type !== "none") el.effect = { ...el.effect };
+      }
       el.width = Math.min(W * 0.8, Math.max(40, measureTextWidth(el)));
       return el;
     }

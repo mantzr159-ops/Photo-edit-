@@ -2,6 +2,7 @@
 import * as React from "react";
 import type { TextElement } from "@/lib/design/types";
 import { paintPrimary } from "@/lib/design/render";
+import { resolveDirection } from "@/lib/design/fonts";
 import { useEditor } from "@/stores/editor-store";
 
 /** In-place text editing: a transparent textarea aligned exactly over the canvas text. */
@@ -30,6 +31,7 @@ export function TextEditorOverlay({ el, zoom, offset }: { el: TextElement; zoom:
       ref={ref}
       value={value}
       spellCheck
+      dir={resolveDirection(value, el.direction)}
       aria-label="Edit text"
       onChange={(e) => {
         setValue(e.target.value);
@@ -46,9 +48,9 @@ export function TextEditorOverlay({ el, zoom, offset }: { el: TextElement; zoom:
       style={{
         position: "absolute",
         left: offset.x + el.x * zoom,
-        top: offset.y + el.y * zoom,
+        top: offset.y + (el.curve ? el.y + el.height / 2 - (el.fontSize * el.lineHeight) / 2 : el.y) * zoom,
         width: el.width * zoom,
-        height: Math.max(el.height, el.fontSize * el.lineHeight) * zoom + 4,
+        height: (el.curve ? el.fontSize * el.lineHeight : Math.max(el.height, el.fontSize * el.lineHeight)) * zoom + 4,
         fontFamily: `"${el.fontFamily}", sans-serif`,
         fontSize: el.fontSize * zoom,
         fontWeight: el.fontWeight,
@@ -61,7 +63,7 @@ export function TextEditorOverlay({ el, zoom, offset }: { el: TextElement; zoom:
         color: paintPrimary(el.fill),
         transform: `rotate(${el.rotation}deg)`,
         transformOrigin: "top left",
-        background: "transparent",
+        background: el.curve ? "rgba(255,255,255,0.92)" : "transparent",
         border: "none",
         outline: "2px solid rgba(116,68,255,0.6)",
         outlineOffset: 2,

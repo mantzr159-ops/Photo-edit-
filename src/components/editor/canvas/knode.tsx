@@ -1,12 +1,12 @@
 "use client";
 /** Renders render-descriptors (lib/design/render.ts) as react-konva nodes. */
 import * as React from "react";
-import { Arrow, Circle, Ellipse, Group, Image as KImage, Line, Path, Rect, Text } from "react-konva";
+import { Arrow, Circle, Ellipse, Group, Image as KImage, Line, Path, Rect, Text, TextPath } from "react-konva";
 import type Konva from "konva";
 import type { NodeDesc, NodeKind } from "@/lib/design/render";
 
 const COMPONENTS: Record<NodeKind, React.ElementType> = {
-  Group, Rect, Ellipse, Path, Line, Arrow, Text, Image: KImage, Circle,
+  Group, Rect, Ellipse, Path, Line, Arrow, Text, TextPath, Image: KImage, Circle,
 };
 
 function CachedNode({ desc }: { desc: NodeDesc }) {

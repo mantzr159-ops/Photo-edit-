@@ -6,7 +6,9 @@ import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, CaseSensitive, CaseUpper, CaseLower, Italic, Strikethrough, Underline, Eraser, ImageUp, Sparkles, FlipHorizontal, FlipVertical, Crop,
 } from "lucide-react";
 import type { DesignElement, ImageElement, ImageMask, IconElement, LineElement, ShapeElement, TextElement } from "@/lib/design/types";
-import { FONTS } from "@/lib/design/fonts";
+import { FONTS, resolveDirection } from "@/lib/design/fonts";
+import { EFFECT_PRESETS, defaultEffect, effectControls } from "@/lib/design/text-effects";
+import type { TextEffectType } from "@/lib/design/types";
 import { useEditor } from "@/stores/editor-store";
 import { NumberField, Section, IconToggle } from "../controls/fields";
 import { ColorPicker, PaintPicker } from "../controls/color-picker";
@@ -64,6 +66,7 @@ export function TextSection({ el, update }: { el: TextElement; update: Upd<TextE
         <SliderField label="Line height" value={el.lineHeight} min={0.6} max={3} step={0.05} onChange={(lineHeight) => update({ lineHeight }, "lh")} />
         <SliderField label="Letter spacing" value={el.letterSpacing} min={-20} max={Math.max(60, el.fontSize)} step={0.5} onChange={(letterSpacing) => update({ letterSpacing }, "ls")} />
       </Section>
+      <TextEffectsSection el={el} update={update} />
       <Section
         title="Highlight"
         action={<Switch checked={!!el.background} onCheckedChange={(v) => update({ background: v ? { color: "#ffd23f", padding: Math.round(el.fontSize * 0.25), radius: Math.round(el.fontSize * 0.15) } : null })} aria-label="Text background" />}
@@ -309,4 +312,71 @@ export function useUpdateSelected() {
     const s = useEditor.getState();
     s.updateElements(s.selectedIds, patch, key);
   }, []);
+}
+
+/** Writing direction, curved text and Canva-style text effects. */
+function TextEffectsSection({ el, update }: { el: TextElement; update: Upd<TextElement> }) {
+  const dir = resolveDirection(el.text, el.direction);
+  const fx = el.effect;
+  const ctl = effectControls(fx?.type ?? "none");
+  const setFx = (patch: Partial<NonNullable<TextElement["effect"]>>, key?: string) => fx && update({ effect: { ...fx, ...patch } }, key);
+  const isRtl = dir === "rtl";
+  return (
+    <Section title="Effects">
+      <div className="grid grid-cols-3 gap-1.5">
+        {EFFECT_PRESETS.map((p) => (
+          <button
+            key={p.type}
+            onClick={() => update({ effect: defaultEffect(p.type as TextEffectType) })}
+            className={cn("flex flex-col items-center gap-1 rounded-lg border p-1.5 text-[10px] hover:bg-accent", (fx?.type ?? "none") === p.type && "border-brand-500 bg-brand-500/10")}
+            aria-pressed={(fx?.type ?? "none") === p.type}
+          >
+            <EffectSwatch type={p.type as TextEffectType} />
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {fx && (
+        <div className="space-y-2">
+          {ctl.color && <ColorPicker value={fx.color} onChange={(color) => setFx({ color })} label="Effect colour" className="w-full" />}
+          {ctl.offset && <SliderField label="Offset" value={fx.offset} min={0} max={100} onChange={(offset) => setFx({ offset }, "fxo")} />}
+          {ctl.direction && <SliderField label="Direction" value={fx.direction} min={-180} max={180} onChange={(direction) => setFx({ direction }, "fxd")} />}
+          {ctl.intensity && <SliderField label={fx.type === "hollow" || fx.type === "outline" || fx.type === "splice" ? "Thickness" : "Intensity"} value={fx.intensity} min={0} max={100} onChange={(intensity) => setFx({ intensity }, "fxi")} />}
+        </div>
+      )}
+      <div className="space-y-1 pt-1">
+        <SliderField label="Curve" value={el.curve ?? 0} min={-100} max={100} onChange={(curve) => update({ curve: Math.round(curve) }, "curve")} />
+        {isRtl && !!el.curve && <p className="text-[11px] text-amber-600">Curved Arabic text is drawn letter by letter, so letters may not join. Keep Arabic text straight for correct shaping.</p>}
+      </div>
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">Direction</p>
+        <div className="flex gap-1 rounded-md bg-muted p-0.5 text-xs">
+          {([["auto", "Auto"], ["ltr", "LTR →"], ["rtl", "← RTL"]] as const).map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => update({ direction: v, ...(v === "rtl" && el.align === "left" ? { align: "right" as const } : v === "ltr" && el.align === "right" ? { align: "left" as const } : {}) })}
+              className={cn("flex-1 rounded px-2 py-1", (el.direction ?? "auto") === v && "bg-background shadow-sm")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function EffectSwatch({ type }: { type: TextEffectType }) {
+  const base = "font-display text-lg font-extrabold leading-none";
+  switch (type) {
+    case "shadow": return <span className={base} style={{ textShadow: "2px 2px 2px rgba(0,0,0,.5)" }}>Ag</span>;
+    case "lift": return <span className={base} style={{ textShadow: "0 3px 6px rgba(0,0,0,.35)" }}>Ag</span>;
+    case "hollow": return <span className={base} style={{ color: "transparent", WebkitTextStroke: "1px currentColor" }}>Ag</span>;
+    case "splice": return <span className={base} style={{ color: "transparent", WebkitTextStroke: "1px currentColor", textShadow: "2px 2px 0 #ffb4c8" }}>Ag</span>;
+    case "outline": return <span className={base} style={{ WebkitTextStroke: "1.5px #7444ff" }}>Ag</span>;
+    case "echo": return <span className={base} style={{ textShadow: "2px 2px 0 rgba(0,0,0,.35), 4px 4px 0 rgba(0,0,0,.18)" }}>Ag</span>;
+    case "glitch": return <span className={base} style={{ textShadow: "-2px 0 #00f0ff, 2px 0 #ff1f6b" }}>Ag</span>;
+    case "neon": return <span className={base} style={{ color: "#ffe6fa", textShadow: "0 0 4px #ff3bd4, 0 0 8px #ff3bd4" }}>Ag</span>;
+    default: return <span className={base}>Ag</span>;
+  }
 }
