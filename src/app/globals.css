@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 248 39% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 248 39% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 248 39% 12%;
+    --primary: 255 100% 63%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 250 30% 96%;
+    --secondary-foreground: 248 39% 16%;
+    --muted: 250 30% 96%;
+    --muted-foreground: 248 10% 46%;
+    --accent: 252 45% 95%;
+    --accent-foreground: 248 39% 14%;
+    --destructive: 0 78% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 250 20% 91%;
+    --input: 250 20% 88%;
+    --ring: 255 100% 63%;
+    --workspace: 250 25% 95%;
+    --radius: 0.75rem;
+  }
+  .dark {
+    --background: 250 30% 7%;
+    --foreground: 250 20% 96%;
+    --card: 250 28% 10%;
+    --card-foreground: 250 20% 96%;
+    --popover: 250 28% 11%;
+    --popover-foreground: 250 20% 96%;
+    --primary: 255 100% 70%;
+    --primary-foreground: 250 40% 8%;
+    --secondary: 250 22% 16%;
+    --secondary-foreground: 250 20% 96%;
+    --muted: 250 22% 15%;
+    --muted-foreground: 250 12% 65%;
+    --accent: 252 25% 18%;
+    --accent-foreground: 250 20% 96%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 250 18% 19%;
+    --input: 250 18% 23%;
+    --ring: 255 100% 70%;
+    --workspace: 250 26% 5%;
+  }
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  body {
+    font-feature-settings: "cv11", "ss01";
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .checkerboard {
+    background-image: linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  }
+  .text-gradient {
+    @apply bg-brand-gradient bg-clip-text text-transparent;
+  }
+}

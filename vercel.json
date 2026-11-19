@@ -1,0 +1,7 @@
+{
+  "framework": "nextjs",
+  "functions": {
+    "src/app/api/ai/image/route.ts": { "maxDuration": 180 },
+    "src/app/api/ai/design/route.ts": { "maxDuration": 120 }
+  }
+}
