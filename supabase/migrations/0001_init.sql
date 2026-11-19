@@ -162,7 +162,7 @@ create policy "own profile insert" on public.profiles for insert with check (id 
 
 create policy "own folders" on public.folders for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
-create policy "projects select" on public.projects for select using (public.can_view_project(id));
+create policy "projects select" on public.projects for select using (owner_id = auth.uid() or public.can_view_project(id));
 create policy "projects insert" on public.projects for insert with check (owner_id = auth.uid());
 create policy "projects update" on public.projects for update using (public.can_edit_project(id)) with check (public.can_edit_project(id));
 create policy "projects delete" on public.projects for delete using (owner_id = auth.uid());
