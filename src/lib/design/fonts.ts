@@ -6,6 +6,9 @@ export type FontDef = { family: string; category: "sans" | "serif" | "display" |
 
 export const FONTS: FontDef[] = [
   { family: "Inter", category: "sans", weights: [300, 400, 500, 600, 700, 800, 900] },
+  { family: "Inter Tight", category: "sans", weights: [300, 400, 500, 600, 700, 800, 900] },
+  { family: "Instrument Serif", category: "serif", weights: [400] },
+  { family: "Newsreader", category: "serif", weights: [300, 400, 500, 600, 700] },
   { family: "Poppins", category: "sans", weights: [300, 400, 500, 600, 700, 800, 900] },
   { family: "Montserrat", category: "sans", weights: [300, 400, 500, 600, 700, 800, 900] },
   { family: "Plus Jakarta Sans", category: "sans", weights: [300, 400, 500, 600, 700, 800] },
@@ -96,10 +99,7 @@ export async function ensureFonts(families: string[], timeoutMs = 4000): Promise
   const pending = known.filter((f) => !loaded.has(f));
   if (!pending.length) return;
   const loadAll = Promise.all(
-    pending.flatMap((f) => [
-      document.fonts.load(`400 16px "${f}"`),
-      document.fonts.load(`700 16px "${f}"`),
-    ]),
+    pending.flatMap((f) => [document.fonts.load(`400 16px "${f}"`), document.fonts.load(`700 16px "${f}"`)]),
   ).then(() => {
     pending.forEach((f) => loaded.add(f));
     listeners.forEach((l) => l());
@@ -122,4 +122,22 @@ export function hasRtlChars(s: string) {
 export function resolveDirection(text: string, dir: "auto" | "ltr" | "rtl" | undefined): "ltr" | "rtl" {
   if (dir === "ltr" || dir === "rtl") return dir;
   return hasRtlChars(text) ? "rtl" : "ltr";
+}
+
+export type FaceSpec = { family: string; weight: number; italic?: boolean };
+
+const facesLoaded = new Set<string>();
+
+/**
+ * Load exactly the font faces a design uses (family + weight + style).
+ * Canvas text can't trigger lazy font loading, so every face must be loaded
+ * explicitly before drawing for exports and thumbnails to be correct.
+ */
+export async function ensureFontFaces(faces: FaceSpec[], timeoutMs = 10000): Promise<void> {
+  if (typeof document === "undefined") return;
+  await ensureFonts([...new Set(faces.map((f) => f.family))], timeoutMs);
+  const todo = faces.filter((f) => FONTS.some((d) => d.family === f.family)).map((f) => `${f.italic ? "italic " : ""}${f.weight} 16px "${f.family}"`).filter((k) => !facesLoaded.has(k));
+  if (!todo.length) return;
+  const all = Promise.all(todo.map((k) => document.fonts.load(k).then(() => facesLoaded.add(k)).catch(() => undefined))).then(() => listeners.forEach((l) => l()));
+  await Promise.race([all, new Promise((r) => setTimeout(r, timeoutMs))]);
 }

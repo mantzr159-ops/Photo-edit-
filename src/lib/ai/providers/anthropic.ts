@@ -1,8 +1,8 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { DESIGN_SYSTEM_PROMPT, TEXT_SYSTEM_PROMPT, designUserPrompt, textUserPrompt } from "../prompts";
-import { DesignConceptsSchema, TextResultSchema, type DesignRequest, type TextRequest } from "../schema";
+import { DECK_SYSTEM_PROMPT, DESIGN_SYSTEM_PROMPT, TEXT_SYSTEM_PROMPT, deckUserPrompt, designUserPrompt, textUserPrompt } from "../prompts";
+import { AIDeckSchema, DesignConceptsSchema, TextResultSchema, type AIDeck, type DeckRequest, type DesignRequest, type TextRequest } from "../schema";
 import type { TextProvider } from "./types";
 
 /** Claude-backed provider (server-side only; key never leaves the server). */
@@ -43,6 +43,10 @@ export class AnthropicTextProvider implements TextProvider {
       "medium",
     );
     return out.concepts.slice(0, req.count);
+  }
+
+  async generateDeck(req: DeckRequest) {
+    return this.parse<AIDeck>(DECK_SYSTEM_PROMPT, deckUserPrompt(req), zodOutputFormat(AIDeckSchema), "medium");
   }
 
   async runTextTask(req: TextRequest) {

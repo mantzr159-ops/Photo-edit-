@@ -22,3 +22,6 @@ export const canvasApi: CanvasApi = {
 
 /** MIME type used for drag-and-drop from editor panels onto the canvas. */
 export const DND_MIME = "application/x-lumora-element";
+
+// Debug handle for automated browser tests in development only.
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") (window as unknown as { __lumoraCanvas: CanvasApi }).__lumoraCanvas = canvasApi;

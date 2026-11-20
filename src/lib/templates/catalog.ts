@@ -92,45 +92,7 @@ const ENTRIES: Entry[] = [
   { cat: "YouTube Thumbnails", size: "yt", layout: "photoOverlay", pal: "sunset", font: "bebas", copy: { name: "48 Hours Travel Vlog", tags: ["travel", "vlog", "youtube", "city"], eyebrow: "Travel vlog", title: "48 HOURS IN TOKYO", subtitle: "What I ate, saw and spent" } },
   { cat: "YouTube Thumbnails", size: "yt", layout: "blobHero", pal: "ocean", font: "poppins", copy: { name: "Beginner Tutorial", tags: ["tutorial", "how to", "youtube", "design"], eyebrow: "Beginner guide", title: "Learn Design in 20 Minutes", subtitle: "No experience needed" } },
 
-  /* ── Presentations ── */
-  {
-    cat: "Presentations", size: "slide", layout: "blobHero", pal: "midnight", font: "jakarta",
-    copy: { name: "Quarterly Business Review", tags: ["business", "report", "deck", "quarterly"], eyebrow: "Q3 2026", title: "Quarterly Business Review", subtitle: "Results, learnings and next steps" },
-    extraPages: [
-      { layout: "listIcons", copy: { name: "Agenda", tags: [], eyebrow: "Agenda", title: "What we'll cover", items: [it("ChartBar", "Results", "Revenue, growth and retention."), it("Lightbulb", "Learnings", "What worked and what didn't."), it("Target", "Priorities", "Our focus for next quarter.")] } },
-      { layout: "cardGrid", copy: { name: "Highlights", tags: [], eyebrow: "Highlights", title: "Key numbers", items: [it("TrendingUp", "+24%", "Revenue growth"), it("Users", "18K", "Active customers"), it("Repeat", "92%", "Retention"), it("Star", "4.8", "Average rating")] } },
-      { layout: "centered", copy: { name: "Thank you", tags: [], title: "Thank you", subtitle: "Questions & discussion" } },
-    ],
-  },
-  {
-    cat: "Presentations", size: "slide", layout: "minimal", pal: "mono", font: "grotesk",
-    copy: { name: "Product Roadmap", tags: ["product", "roadmap", "deck", "startup"], eyebrow: "Product team", title: "2026 Roadmap", subtitle: "Where we're going and why", footer: "Confidential" },
-    extraPages: [
-      { layout: "cardGrid", copy: { name: "Quarters", tags: [], eyebrow: "Timeline", title: "Four quarters, four bets", items: [it("Rocket", "Q1 · Launch", "Public beta of the new editor."), it("Puzzle", "Q2 · Integrations", "Connect the tools teams use."), it("Globe", "Q3 · Expand", "Five new languages."), it("ShieldCheck", "Q4 · Enterprise", "SSO, audit logs, admin.")] } },
-      { layout: "quote", copy: { name: "Vision", tags: [], title: "Make great design possible for everyone, in every language.", author: "Our north star" } },
-    ],
-  },
-  {
-    cat: "Presentations", size: "slide", layout: "splitFrame", pal: "mint", font: "fraunces",
-    copy: { name: "Marketing Plan", tags: ["marketing", "plan", "deck", "strategy"], eyebrow: "Marketing", title: "Spring Campaign Plan", subtitle: "Audience, channels and budget for Q2.", cta: "Let's go" },
-    extraPages: [
-      { layout: "listIcons", copy: { name: "Channels", tags: [], eyebrow: "Channels", title: "Where we'll show up", items: [it("Camera", "Social", "Short video, 4× per week."), it("Mail", "Email", "Two newsletters per month."), it("Search", "Search", "Content around 20 keywords."), it("Handshake", "Partners", "Three co-marketing launches.")] } },
-    ],
-  },
-  {
-    cat: "Presentations", size: "slide", layout: "centered", pal: "clinic", font: "montserrat",
-    copy: { name: "Research Findings", tags: ["research", "science", "deck", "academic"], eyebrow: "Research seminar", title: "Findings & Implications", subtitle: "Department of Public Health · 2026" },
-    extraPages: [
-      { layout: "cardGrid", copy: { name: "Results", tags: [], eyebrow: "Results", title: "Summary of results", items: [it("Users", "n = 1,240", "Participants enrolled"), it("Activity", "−18%", "Reduction in incidence"), it("Clock", "24 months", "Median follow-up")] } },
-    ],
-  },
-  {
-    cat: "Presentations", size: "slide", layout: "bordered", pal: "lemon", font: "nunito",
-    copy: { name: "Class Lecture", tags: ["lecture", "class", "education", "deck"], eyebrow: "Lecture 4", title: "Introduction to Economics", subtitle: "Supply, demand and prices", items: [it("GraduationCap", "")] },
-    extraPages: [
-      { layout: "listIcons", copy: { name: "Objectives", tags: [], eyebrow: "Today", title: "Learning objectives", items: [it("Scale", "Define supply & demand"), it("TrendingUp", "Read a demand curve"), it("Calculator", "Find the equilibrium price")] } },
-    ],
-  },
+  /* Presentations: see decks.ts (editorial slide system) */
 
   /* ── Posters ── */
   { cat: "Posters", size: "poster", layout: "photoOverlay", pal: "royal", font: "bebas", copy: { name: "Music Festival Poster", tags: ["music", "festival", "concert", "event"], eyebrow: "July 18–20 · Riverside Park", title: "SUMMER SOUND FESTIVAL", subtitle: "40 artists · 3 stages · 3 days", cta: "Tickets on sale" } },
