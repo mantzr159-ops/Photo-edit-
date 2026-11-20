@@ -1,4 +1,4 @@
-import type { DesignRequest, DesignSpec, ImageRequest, TextRequest, TextResult } from "../schema";
+import type { AIDeck, DeckRequest, DesignRequest, DesignSpec, ImageRequest, TextRequest, TextResult } from "../schema";
 
 /** Text/design LLM provider. Swap implementations without touching the app. */
 export interface TextProvider {
@@ -8,6 +8,8 @@ export interface TextProvider {
   readonly isAI: boolean;
   generateDesigns(req: DesignRequest): Promise<DesignSpec[]>;
   runTextTask(req: TextRequest): Promise<TextResult>;
+  /** Full presentation deck with art-directed slide compositions. */
+  generateDeck(req: DeckRequest): Promise<AIDeck>;
 }
 
 export interface GeneratedImage {

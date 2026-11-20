@@ -4,7 +4,7 @@
  * summarisation and colour theory. The UI labels its output accordingly.
  */
 import { contrastRatio, harmony, hexToHsl, hslToHex } from "@/lib/utils/color";
-import type { DesignRequest, DesignSpec, TextRequest, TextResult } from "../schema";
+import type { AIDeck, DeckRequest, DesignRequest, DesignSpec, TextRequest, TextResult } from "../schema";
 import type { TextProvider } from "./types";
 
 type Theme = {
@@ -178,6 +178,10 @@ export class LocalTextProvider implements TextProvider {
     });
   }
 
+  async generateDeck(req: DeckRequest): Promise<AIDeck> {
+    return offlineDeck(req);
+  }
+
   async runTextTask(req: TextRequest): Promise<TextResult> {
     const empty: TextResult = { text: "", items: [], palettes: [] };
     const input = req.input.trim();
@@ -274,4 +278,59 @@ function critique(input: string): Pick<TextResult, "text" | "items"> {
   if (els.length > 25) tips.push("The layout is busy — consider removing decorative elements to give content room to breathe.");
   if (!tips.length) tips.push("Hierarchy and alignment look solid. Try adding one accent colour to draw the eye to the key message.");
   return { text: `Heuristic review of ${els.length} elements (offline engine).`, items: tips };
+}
+
+/* ───────── offline presentation engine ───────── */
+
+type Slide = AIDeck["slides"][number];
+const S = (kind: Slide["kind"], o: Partial<Slide>): Slide => ({ kind, label: "", heading: "", body: "", number: "", items: [], quote: "", attribution: "", footnote: "", ...o });
+
+/**
+ * Deterministic deck scaffold. It never invents facts: figures are explicit
+ * placeholders and every data slide says so, so the user replaces them.
+ */
+export function offlineDeck(req: DeckRequest): AIDeck {
+  const ar = /[\u0600-\u06FF]/.test(req.prompt);
+  const theme = detectTheme(req.prompt);
+  const style: AIDeck["style"] =
+    req.style !== "auto" ? req.style
+    : theme === THEMES.medical || theme === THEMES.education ? "journal"
+    : theme === THEMES.tech ? "keynote"
+    : theme === THEMES.nature ? "forest"
+    : theme === THEMES.luxury || theme === THEMES.food ? "editorial"
+    : "swiss";
+  const topic = ar ? (req.prompt.replace(/^(اعمل|سوي|صمم|أنشئ|انشئ)\s+(لي\s+)?(عرض(اً)?\s+(تقديمي(اً)?)?\s*)?(عن|حول)?\s*/u, "").split(/[.،,\n]/)[0].trim().slice(0, 60) || "موضوع العرض") : extractTopic(req.prompt);
+  const ph = ar ? "بيانات توضيحية — استبدلها بأرقامك" : "Placeholder data — replace with your figures";
+  const L = ar
+    ? {
+        cover: S("cover", { heading: topic, body: "عرض تقديمي", footnote: "٢٠٢٧" }),
+        index: S("index", { label: "المحتويات", heading: "المحتويات", items: [{ label: "الفكرة الأساسية", value: "", desc: "" }, { label: "السياق", value: "", desc: "" }, { label: "الأرقام", value: "", desc: "" }, { label: "الخطوات القادمة", value: "", desc: "" }] }),
+        statement: S("statement", { label: "الفكرة الأساسية", heading: `ما الذي يجعل ${topic} مهماً الآن؟`, body: "اكتب هنا الرسالة الرئيسية التي تريد أن يتذكرها جمهورك في جملة أو جملتين." }),
+        essay: S("essay", { label: "السياق", heading: "الصورة الكاملة في فقرة واحدة.", body: "استخدم هذه المساحة لشرح الخلفية: ما المشكلة، من يتأثر بها، ولماذا لم تُحل بعد. اجعل النص قصيراً وواضحاً.", quote: "اقتباس قصير يلخص الفكرة.", attribution: "المصدر" }),
+        bigNumber: S("bigNumber", { label: "رقم مهم", number: "٠٠٪", heading: "اكتب هنا ما يعنيه هذا الرقم.", body: "جملة توضح المصدر والسياق.", footnote: ph }),
+        imageCaption: S("imageCaption", { label: "شكل ٠١", heading: "صورة تحكي الفكرة.", body: "اسحب صورة إلى هذه المساحة، واكتب وصفاً قصيراً لها." }),
+        process: S("process", { label: "المنهجية", heading: "كيف نعمل", items: [{ label: "نفهم", value: "", desc: "نحدد المشكلة بدقة." }, { label: "نصمم", value: "", desc: "نختبر الحلول بسرعة." }, { label: "ننفذ", value: "", desc: "نطلق ونقيس النتائج." }] }),
+        bars: S("bars", { label: "الأرقام", heading: "مقارنة بالأرقام", body: "عنوان قصير يشرح ما يوضحه الرسم.", items: [{ label: "البند الأول", value: "40", desc: "" }, { label: "البند الثاني", value: "28", desc: "" }, { label: "البند الثالث", value: "17", desc: "" }], footnote: ph }),
+        timeline: S("timeline", { label: "الخطة", heading: "خارطة الطريق", items: [{ label: "المرحلة ١", value: "", desc: "البداية والتخطيط." }, { label: "المرحلة ٢", value: "", desc: "التنفيذ الأولي." }, { label: "المرحلة ٣", value: "", desc: "التوسع والتحسين." }] }),
+        comparison: S("comparison", { label: "مقارنة", heading: "قبل وبعد", items: [{ label: "قبل", value: "الوضع الحالي", desc: "صف الوضع الحالي باختصار." }, { label: "بعد", value: "ما نطمح إليه", desc: "صف النتيجة المتوقعة." }] }),
+        quote: S("quote", { label: "اقتباس", quote: "اكتب هنا اقتباساً ملهماً يتعلق بالموضوع.", attribution: "اسم القائل" }),
+        closing: S("closing", { heading: "شكراً لكم.", items: [{ label: "التواصل", value: "", desc: "email@example.com" }, { label: "الأسئلة", value: "", desc: "نرحب بأسئلتكم" }] }),
+      }
+    : {
+        cover: S("cover", { heading: topic, body: "Presentation", footnote: "2027" }),
+        index: S("index", { label: "Contents", heading: "Contents", items: [{ label: "The core idea", value: "", desc: "" }, { label: "Context", value: "", desc: "" }, { label: "The numbers", value: "", desc: "" }, { label: "Next steps", value: "", desc: "" }] }),
+        statement: S("statement", { label: "The core idea", heading: `Why ${topic} matters now.`, body: "Replace this with the one message your audience should remember, in a sentence or two." }),
+        essay: S("essay", { label: "Context", heading: "The whole picture, in one paragraph.", body: "Use this space for background: what the problem is, who it affects, and why it hasn't been solved yet. Keep it short and concrete.", quote: "A short pull quote that captures the idea.", attribution: "Source" }),
+        bigNumber: S("bigNumber", { label: "Key figure", number: "00%", heading: "Say what this number means.", body: "One sentence of context and source.", footnote: ph }),
+        imageCaption: S("imageCaption", { label: "Fig. 01", heading: "An image that tells the story.", body: "Drop a photograph into this area and write a short caption." }),
+        process: S("process", { label: "Approach", heading: "How we work", items: [{ label: "Understand", value: "", desc: "Define the problem precisely." }, { label: "Design", value: "", desc: "Test ideas quickly and cheaply." }, { label: "Deliver", value: "", desc: "Launch, measure, improve." }] }),
+        bars: S("bars", { label: "The numbers", heading: "A comparison, to scale", body: "A short line explaining what the chart shows.", items: [{ label: "Item one", value: "40", desc: "" }, { label: "Item two", value: "28", desc: "" }, { label: "Item three", value: "17", desc: "" }], footnote: ph }),
+        timeline: S("timeline", { label: "Plan", heading: "The road ahead", items: [{ label: "Phase 1", value: "", desc: "Discovery and planning." }, { label: "Phase 2", value: "", desc: "First release." }, { label: "Phase 3", value: "", desc: "Scale and refine." }] }),
+        comparison: S("comparison", { label: "Contrast", heading: "Before and after", items: [{ label: "Before", value: "Where we are", desc: "Describe today in one sentence." }, { label: "After", value: "Where we're going", desc: "Describe the outcome in one sentence." }] }),
+        quote: S("quote", { label: "Perspective", quote: "Replace with a memorable quotation about your topic.", attribution: "Name, role" }),
+        closing: S("closing", { heading: "Thank you.", items: [{ label: "Contact", value: "", desc: "name@example.com" }, { label: "Questions", value: "", desc: "Let's discuss" }] }),
+      };
+  const order: Slide["kind"][] = ["index", "statement", "bigNumber", "imageCaption", "essay", "bars", "process", "quote", "timeline", "comparison"];
+  const middle = order.slice(0, Math.max(2, req.slides - 2)).map((k) => L[k]);
+  return { title: topic, subtitle: ar ? "عرض تقديمي" : "Presentation", author: "", style, accent: "", slides: [L.cover, ...middle, L.closing] };
 }

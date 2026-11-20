@@ -104,32 +104,6 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
   ]),
 
   /* ───────────── Presentations ───────────── */
-  template("pres-pitch", "Startup Pitch Deck", "Presentations", 1920, 1080, ["pitch", "startup", "deck"], [
-    page(bg(lin(135, "#16132b", "#3a168f")), [
-      circle(1300, -200, 900, rad("rgba(177,77,255,0.55)", "rgba(177,77,255,0)")),
-      text("SERIES A · 2026", 140, 200, 900, { fontSize: 32, letterSpacing: 8, fontWeight: 700, fill: "#b5a3ff" }),
-      heading("Lumen Health", 140, 280, 1400, { fontSize: 180, fill: "#ffffff" }),
-      body("Making preventive care effortless for 100 million people.", 140, 520, 1200, { fontSize: 46, fill: "#d4caff" }),
-      line(140, 880, 200, "#ff6b5a", { strokeWidth: 8 }),
-      body("Investor presentation", 140, 910, 900, { fontSize: 30, fill: "#b8b3cc" }),
-    ], "Title"),
-    page(bg("#ffffff"), [
-      text("THE PROBLEM", 140, 140, 900, { fontSize: 28, letterSpacing: 6, fontWeight: 700, fill: "#7444ff" }),
-      heading("Chronic disease is caught too late.", 140, 200, 1640, { fontSize: 88, fill: INK }),
-      ...[0, 1, 2].flatMap((i) => [
-        rect(140 + i * 560, 520, 500, 400, "#f4f2fb", { cornerRadius: 28 }),
-        icon(["Clock", "TrendingUp", "Users"][i], 200 + i * 560, 580, 96, "#7444ff"),
-        heading(["7 yrs", "$3.8T", "60%"][i], 200 + i * 560, 700, 400, { fontSize: 72, fill: INK }),
-        body(["average diagnosis delay", "annual cost in the US", "of adults affected"][i], 200 + i * 560, 800, 400, { fontSize: 28 }),
-      ]),
-    ], "Problem"),
-    page(bg("#ffffff"), [
-      text("OUR SOLUTION", 140, 140, 900, { fontSize: 28, letterSpacing: 6, fontWeight: 700, fill: "#7444ff" }),
-      heading("Continuous screening,\nzero friction.", 140, 200, 900, { fontSize: 88, fill: INK }),
-      body("A wearable + AI companion that flags risk months earlier and books the right specialist automatically.", 140, 480, 820, { fontSize: 36 }),
-      frame("rounded", 1060, 140, 720, 800, { cornerRadius: 40 }),
-    ], "Solution"),
-  ]),
   template("pres-lesson", "Lesson Slides", "Presentations", 1920, 1080, ["lesson", "education", "class"], [
     page(bg("#fdf0d5"), [
       shape("blob", 1200, 300, 800, 800, "#f77f00", { opacity: 0.9 }),

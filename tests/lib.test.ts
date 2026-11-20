@@ -119,3 +119,39 @@ describe("text features", () => {
     expect(BUILTIN_TEMPLATES.filter((t) => t.tags.includes("arabic")).length).toBeGreaterThanOrEqual(15);
   });
 });
+
+import { offlineDeck } from "@/lib/ai/providers/local";
+import { toDeckSpec } from "@/lib/ai/deck";
+import { buildDeck, diversify, SLIDE_KINDS } from "@/lib/templates/editorial";
+import { AIDeckSchema } from "@/lib/ai/schema";
+
+describe("editorial decks", () => {
+  it("offline deck is schema-valid, starts with cover, ends with closing, never repeats kinds back-to-back", () => {
+    const ai = offlineDeck({ prompt: "Grand rounds on hypertension for residents", slides: 9, style: "auto" });
+    expect(AIDeckSchema.safeParse(ai).success).toBe(true);
+    const deck = toDeckSpec(ai, "x");
+    expect(deck.style).toBe("journal");
+    expect(deck.slides[0].kind).toBe("cover");
+    expect(deck.slides.at(-1)!.kind).toBe("closing");
+    for (let i = 1; i < deck.slides.length; i++) expect(deck.slides[i].kind).not.toBe(deck.slides[i - 1].kind);
+  });
+  it("detects Arabic and renders RTL", () => {
+    const ai = offlineDeck({ prompt: "عرض تقديمي عن التسويق", slides: 6, style: "swiss" });
+    const deck = toDeckSpec(ai, "عرض تقديمي عن التسويق");
+    expect(deck.rtl).toBe(true);
+    const pages = buildDeck(deck);
+    const t = pages[1].elements.find((e) => e.type === "text");
+    expect(t && t.type === "text" && t.direction).toBe("rtl");
+  });
+  it("diversify removes consecutive duplicates and data slides without data degrade", () => {
+    const out = diversify([{ kind: "statement", heading: "a" }, { kind: "statement", heading: "b" }, { kind: "statement", heading: "c" }]);
+    expect(out[0].kind).toBe("cover");
+    expect(out[1].kind).not.toBe(out[2].kind);
+    const spec = toDeckSpec({ title: "T", subtitle: "", author: "", style: "swiss", accent: "", slides: [{ kind: "bars", label: "", heading: "h", body: "", number: "", items: [], quote: "", attribution: "", footnote: "" }] }, "t");
+    expect(spec.slides[0].kind).toBe("cover");
+  });
+  it("every slide kind renders elements", () => {
+    const deck = { title: "T", style: "swiss" as const, slides: SLIDE_KINDS.map((kind) => ({ kind, heading: "Heading", body: "Body", number: "42%", quote: "Q", attribution: "A", items: [{ label: "A", value: "3", desc: "d" }, { label: "B", value: "5", desc: "d" }] })) };
+    buildDeck(deck).forEach((p) => expect(p.elements.length).toBeGreaterThan(1));
+  });
+});

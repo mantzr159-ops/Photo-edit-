@@ -99,3 +99,43 @@ export const STYLE_PROMPTS: Record<(typeof IMAGE_STYLES)[number], string> = {
 };
 
 export type AIErrorBody = { error: string; code?: "not_configured" | "rate_limited" | "invalid" | "provider_error" | "unauthorized"; setup?: string };
+
+/* ───────────────────────────── presentations ───────────────────────────── */
+
+export const DECK_STYLES = ["swiss", "editorial", "journal", "keynote", "forest"] as const;
+export const DECK_SLIDE_KINDS = ["cover", "statement", "bigNumber", "imageCaption", "essay", "timeline", "bars", "comparison", "quote", "index", "process", "closing"] as const;
+
+const SlideItemSchema = z.object({
+  label: z.string().describe("Short label: milestone, bar name, step name, contents entry, or comparison side"),
+  value: z.string().describe("Value: a number for bars (digits only), price, page ref; may be empty"),
+  desc: z.string().describe("One short sentence; may be empty"),
+});
+
+export const AISlideSchema = z.object({
+  kind: z.enum(DECK_SLIDE_KINDS),
+  label: z.string().describe("Small section label / figure number; may be empty"),
+  heading: z.string().describe("The slide's main line. Short, strong, sentence case."),
+  body: z.string().describe("At most ~40 words of supporting text; may be empty"),
+  number: z.string().describe("For bigNumber: the figure, e.g. '62%' or '−8.4'; otherwise empty"),
+  items: z.array(SlideItemSchema).describe("Structured data for timeline/bars/process/index/comparison/closing; otherwise empty"),
+  quote: z.string().describe("For quote/essay slides: a quotation or pull quote; otherwise empty"),
+  attribution: z.string().describe("Who said the quote; may be empty"),
+  footnote: z.string().describe("Source or note, e.g. 'Illustrative data'; may be empty"),
+});
+
+export const AIDeckSchema = z.object({
+  title: z.string(),
+  subtitle: z.string().describe("Cover meta line, e.g. 'Board update · 2027'"),
+  author: z.string().describe("Presenter or organisation; may be empty"),
+  style: z.enum(DECK_STYLES),
+  accent: z.string().describe("Optional accent colour as #RRGGBB, or empty to use the style's default"),
+  slides: z.array(AISlideSchema),
+});
+export type AIDeck = z.infer<typeof AIDeckSchema>;
+
+export const DeckRequestSchema = z.object({
+  prompt: z.string().trim().min(3).max(3000),
+  slides: z.number().int().min(4).max(14).default(8),
+  style: z.enum([...DECK_STYLES, "auto"]).default("auto"),
+});
+export type DeckRequest = z.infer<typeof DeckRequestSchema>;

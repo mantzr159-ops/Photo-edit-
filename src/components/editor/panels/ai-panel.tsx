@@ -19,6 +19,10 @@ import { insertPayload } from "@/lib/editor/insert";
 import { iconNodeToSvg, loadIconSet } from "@/lib/design/icons";
 import { applyPaletteToPage } from "./design-panel";
 import { smartTidy } from "@/lib/editor/style-tools";
+import type { DeckSpec } from "@/lib/templates/editorial";
+import { DECK_THEMES } from "@/lib/templates/editorial";
+import { compileDeck } from "@/lib/ai/compile-deck";
+import { DECK_STYLES } from "@/lib/ai/schema";
 import { cn } from "@/lib/utils/cn";
 
 type ProviderInfo = { id: string; label: string; isAI: boolean };
@@ -101,6 +105,7 @@ function DesignTab() {
         ))}
         <span className="ml-auto text-[11px] text-muted-foreground">{doc.width}×{doc.height}</span>
       </div>
+      {/presentation|slides?|deck|keynote|عرض تقديمي|شرائح/i.test(prompt) && <p className="rounded-md bg-brand-500/10 p-2 text-[11px] text-brand-700 dark:text-brand-300">Making a presentation? The <b>Slides</b> tab builds a full art-directed deck.</p>}
       <Button variant="gradient" className="w-full" disabled={busy || prompt.trim().length < 3} onClick={() => void generate()}>
         {busy ? <Spinner /> : <Sparkles />} {busy ? "Designing…" : "Generate designs"}
       </Button>
@@ -134,6 +139,114 @@ function DesignTab() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+
+/* ───────────────────────────── presentation decks ───────────────────────────── */
+
+const DECK_EXAMPLES = [
+  "Grand rounds talk on home blood-pressure monitoring for cardiology residents",
+  "Investor update for a sustainable food startup, Q4 results",
+  "Launch keynote for a smart desk lamp",
+  "عرض تقديمي عن خطة شركة ناشئة للتوسع في العراق",
+];
+
+const STYLE_LABEL: Record<(typeof DECK_STYLES)[number], string> = { swiss: "Swiss", editorial: "Editorial", journal: "Journal", keynote: "Keynote", forest: "Forest" };
+
+function SlidesTab() {
+  const doc = useEditor((s) => s.doc);
+  const [prompt, setPrompt] = React.useState("");
+  const [count, setCount] = React.useState(8);
+  const [style, setStyle] = React.useState<(typeof DECK_STYLES)[number] | "auto">("auto");
+  const [busy, setBusy] = React.useState(false);
+  const [provider, setProvider] = React.useState<ProviderInfo | null>(null);
+  const [result, setResult] = React.useState<{ deck: DeckSpec; pages: Page[] } | null>(null);
+  if (!doc) return null;
+  const W = 1920, H = 1080;
+
+  const generate = async () => {
+    setBusy(true);
+    setResult(null);
+    try {
+      const d = await postJson<{ provider: ProviderInfo; deck: DeckSpec; warning?: string }>("/api/ai/deck", { prompt, slides: count, style });
+      setProvider(d.provider);
+      if (d.warning) toast.warning(d.warning);
+      setResult({ deck: d.deck, pages: await compileDeck(d.deck, W, H) });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const fresh = (pages: Page[]) =>
+    pages.map((p) => ({ ...structuredClone(p), id: crypto.randomUUID().slice(0, 12), elements: p.elements.map((e) => ({ ...structuredClone(e), id: crypto.randomUUID().slice(0, 12) })) }));
+
+  const apply = (mode: "replace" | "append") => {
+    if (!result) return;
+    const s = useEditor.getState();
+    const sameSize = s.doc!.width === W && s.doc!.height === H;
+    if (mode === "replace") {
+      s.replacePages(fresh(result.pages), { width: W, height: H });
+      if (!s.doc!.name || s.doc!.name.startsWith("Untitled")) s.setName(result.deck.title);
+    } else {
+      if (!sameSize) return toast.error("Slides are 1920×1080. Use “Replace design” or resize your design to 16:9 first.");
+      s.appendPages(fresh(result.pages));
+    }
+    toast.success(`${result.pages.length} slides added — every element is editable`);
+  };
+
+  return (
+    <div className="space-y-3">
+      <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyDown={(e) => e.stopPropagation()} rows={4} maxLength={3000} placeholder="What is the presentation about, and who is it for?" aria-label="Presentation prompt" />
+      <div className="flex flex-wrap gap-1.5">
+        {DECK_EXAMPLES.map((ex) => (
+          <button key={ex} onClick={() => setPrompt(ex)} dir="auto" className="rounded-full border px-2.5 py-1 text-left text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">{ex.length > 44 ? ex.slice(0, 42) + "…" : ex}</button>
+        ))}
+      </div>
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">Art direction</p>
+        <div className="grid grid-cols-3 gap-1">
+          {(["auto", ...DECK_STYLES] as const).map((st) => (
+            <button key={st} onClick={() => setStyle(st)} className={cn("flex items-center gap-1.5 rounded-md border px-1.5 py-1.5 text-[11px] hover:bg-accent", style === st && "border-brand-500 bg-brand-500/10")}>
+              {st !== "auto" && <span className="h-3 w-3 shrink-0 rounded-sm border" style={{ background: DECK_THEMES[st].paper, boxShadow: `inset -5px 0 0 ${DECK_THEMES[st].accent}` }} />}
+              {st === "auto" ? "Auto" : STYLE_LABEL[st]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Slides</span>
+        <input type="range" min={4} max={14} value={count} onChange={(e) => setCount(Number(e.target.value))} className="flex-1 accent-brand-500" aria-label="Number of slides" />
+        <span className="w-6 text-right text-xs tabular-nums">{count}</span>
+      </div>
+      <Button variant="gradient" className="w-full" disabled={busy || prompt.trim().length < 3} onClick={() => void generate()}>
+        {busy ? <Spinner /> : <Sparkles />} {busy ? "Art-directing your deck…" : "Generate presentation"}
+      </Button>
+      <ProviderNote p={provider} />
+      {result && (
+        <div className="space-y-2 rounded-xl border bg-card p-2">
+          <div className="px-1">
+            <p className="text-sm font-semibold" dir="auto">{result.deck.title}</p>
+            <p className="text-[11px] text-muted-foreground">{STYLE_LABEL[result.deck.style]} · {result.pages.length} slides · each slide a different composition</p>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {result.pages.map((pg, i) => (
+              <div key={pg.id} className="relative overflow-hidden rounded border" style={{ aspectRatio: "16/9" }}>
+                <PageThumb cacheKey={`deck:${pg.id}`} page={pg} width={W} height={H} maxSide={480} className="h-full w-full" />
+                <span className="absolute bottom-0.5 left-1 rounded bg-black/50 px-1 text-[9px] text-white">{i + 1}</span>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button size="sm" onClick={() => apply("replace")}>Replace design</Button>
+            <Button size="sm" variant="outline" onClick={() => apply("append")}>Add slides</Button>
+          </div>
+          <p className="px-1 text-[10px] text-muted-foreground">Image areas are placeholders — drag a photo onto them. Check every figure before presenting.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -391,13 +504,15 @@ function SuggestTab() {
 export function AIPanel() {
   return (
     <Tabs defaultValue="design">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="design" className="px-1">Design</TabsTrigger>
+        <TabsTrigger value="slides" className="px-1">Slides</TabsTrigger>
         <TabsTrigger value="image" className="px-1">Image</TabsTrigger>
         <TabsTrigger value="write" className="px-1">Write</TabsTrigger>
         <TabsTrigger value="suggest" className="px-1">Ideas</TabsTrigger>
       </TabsList>
       <TabsContent value="design"><DesignTab /></TabsContent>
+      <TabsContent value="slides"><SlidesTab /></TabsContent>
       <TabsContent value="image"><ImageTab /></TabsContent>
       <TabsContent value="write"><WriteTab /></TabsContent>
       <TabsContent value="suggest"><SuggestTab /></TabsContent>

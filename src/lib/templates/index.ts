@@ -2,8 +2,10 @@ import { clonePage } from "@/lib/design/factory";
 import type { Page, TemplateCategory, TemplateDef } from "@/lib/design/types";
 import { BUILTIN_TEMPLATES as HANDCRAFTED } from "./library";
 import { CATALOG_TEMPLATES } from "./catalog";
+import { DECK_TEMPLATES } from "./decks";
 
-export const BUILTIN_TEMPLATES = [...HANDCRAFTED, ...CATALOG_TEMPLATES];
+/** Premium editorial decks first, then hand-crafted, then generated templates. */
+export const BUILTIN_TEMPLATES = [...DECK_TEMPLATES, ...HANDCRAFTED, ...CATALOG_TEMPLATES];
 
 
 /** Fresh, independently-editable copy of a template's pages (new ids). */

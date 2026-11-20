@@ -10,7 +10,7 @@ import { buildNodes, describeBackground, describeElement, elementGroupConfig, ic
 import { loadImage, getCachedImage } from "@/lib/design/images";
 import { iconDataUrl } from "@/lib/design/icons";
 import { patternDataUrl } from "@/lib/design/patterns";
-import { ensureFonts } from "@/lib/design/fonts";
+import { ensureFontFaces, type FaceSpec } from "@/lib/design/fonts";
 import { elementBounds, unionBounds, type Box } from "@/lib/design/geometry";
 
 const iconImages = new Map<string, HTMLImageElement>();
@@ -33,16 +33,16 @@ export { loadIcon };
 /** Load every resource a page needs (images, icons, fonts, pattern tiles). */
 export async function preloadPage(page: Page): Promise<HTMLImageElement | undefined> {
   const jobs: Promise<unknown>[] = [];
-  const fonts = new Set<string>();
+  const faces: FaceSpec[] = [];
   for (const el of page.elements) {
     if (el.type === "image") jobs.push(loadImage(el.src).catch(() => null));
     if (el.type === "icon") jobs.push(loadIcon(el).catch(() => null));
-    if (el.type === "text") fonts.add(el.fontFamily);
+    if (el.type === "text") faces.push({ family: el.fontFamily, weight: el.fontWeight, italic: el.italic });
   }
   if (page.background.image?.src) jobs.push(loadImage(page.background.image.src).catch(() => null));
   let pattern: Promise<HTMLImageElement | null> = Promise.resolve(null);
   if (page.background.pattern) pattern = loadImage(patternDataUrl(page.background.pattern.kind, page.background.pattern.color)).catch(() => null);
-  jobs.push(ensureFonts([...fonts]));
+  jobs.push(ensureFontFaces(faces));
   await Promise.all(jobs);
   return (await pattern) ?? undefined;
 }

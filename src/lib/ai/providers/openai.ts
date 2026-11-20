@@ -1,6 +1,6 @@
 import "server-only";
-import { DESIGN_SYSTEM_PROMPT, TEXT_SYSTEM_PROMPT, designUserPrompt, textUserPrompt } from "../prompts";
-import { DesignConceptsSchema, TextResultSchema, type DesignRequest, type DesignSpec, type ImageRequest, type TextRequest, type TextResult } from "../schema";
+import { DECK_SYSTEM_PROMPT, DESIGN_SYSTEM_PROMPT, TEXT_SYSTEM_PROMPT, deckUserPrompt, designUserPrompt, textUserPrompt } from "../prompts";
+import { AIDeckSchema, DesignConceptsSchema, TextResultSchema, type AIDeck, type DeckRequest, type DesignRequest, type DesignSpec, type ImageRequest, type TextRequest, type TextResult } from "../schema";
 import type { GeneratedImage, ImageProvider, TextProvider } from "./types";
 import { z } from "zod/v4";
 
@@ -38,6 +38,10 @@ export class OpenAITextProvider implements TextProvider {
   async generateDesigns(req: DesignRequest): Promise<DesignSpec[]> {
     const out = await openaiJson<{ concepts: DesignSpec[] }>(this.apiKey, this.model, DESIGN_SYSTEM_PROMPT, designUserPrompt(req), DesignConceptsSchema, "design_concepts");
     return out.concepts.slice(0, req.count);
+  }
+
+  generateDeck(req: DeckRequest): Promise<AIDeck> {
+    return openaiJson<AIDeck>(this.apiKey, this.model, DECK_SYSTEM_PROMPT, deckUserPrompt(req), AIDeckSchema, "slide_deck");
   }
 
   runTextTask(req: TextRequest): Promise<TextResult> {

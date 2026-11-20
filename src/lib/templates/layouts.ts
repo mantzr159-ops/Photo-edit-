@@ -433,7 +433,7 @@ const LAYOUTS: Record<LayoutId, (c: Ctx) => { background: PageBackground; els: D
 };
 
 /** Mirror a layout horizontally for right-to-left languages. */
-function mirror(els: DesignElement[], W: number): DesignElement[] {
+export function mirror(els: DesignElement[], W: number): DesignElement[] {
   return els.map((e) => {
     const c = { ...e, x: W - e.x - e.width, rotation: -e.rotation };
     if (c.type === "text") {

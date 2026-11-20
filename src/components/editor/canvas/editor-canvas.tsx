@@ -16,7 +16,7 @@ import { selectActivePage, useEditor, registerTextMeasurer } from "@/stores/edit
 import type { DesignElement, TextElement } from "@/lib/design/types";
 import { elementBounds, snapBox, unionBounds, boxesIntersect, type Guide } from "@/lib/design/geometry";
 import { measureTextBox } from "@/lib/design/render";
-import { ensureFonts, onFontsLoaded } from "@/lib/design/fonts";
+import { ensureFontFaces, onFontsLoaded } from "@/lib/design/fonts";
 import { ElementNode, type ElementHandlers } from "./element-node";
 import { PageBackgroundNode } from "./page-background";
 import { TextEditorOverlay } from "./text-editor-overlay";
@@ -119,18 +119,35 @@ export default function EditorCanvas() {
     };
   }, [fit, zoomAt, W, H]);
 
-  /* ───────────── fonts: re-measure text once faces arrive ───────────── */
+  /* ───────────── fonts: load exactly the faces in use, redraw when they arrive ───────────── */
+  const faceKey = React.useMemo(() => {
+    const keys = new Set<string>();
+    doc?.pages.forEach((p) => p.elements.forEach((e) => e.type === "text" && keys.add(`${e.fontFamily}|${e.fontWeight}|${e.italic ? 1 : 0}`)));
+    return [...keys].sort().join(",");
+  }, [doc?.pages]);
+
   React.useEffect(() => {
-    if (!doc) return;
-    const fams = new Set<string>();
-    doc.pages.forEach((p) => p.elements.forEach((e) => e.type === "text" && fams.add(e.fontFamily)));
-    void ensureFonts([...fams]).then(() => useEditor.getState().refitAllText());
-    return onFontsLoaded(() => {
+    if (!faceKey) return;
+    const faces = faceKey.split(",").map((k) => {
+      const [family, weight, italic] = k.split("|");
+      return { family, weight: Number(weight), italic: italic === "1" };
+    });
+    void ensureFontFaces(faces).then(() => useEditor.getState().refitAllText());
+  }, [faceKey]);
+
+  React.useEffect(() => {
+    const redraw = () => {
       useEditor.getState().refitAllText();
       stageRef.current?.batchDraw();
-    }) as () => void;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doc?.id, page?.id]);
+    };
+    // the browser finishing any font download redraws the canvas (canvas text can't do this itself)
+    document.fonts.addEventListener("loadingdone", redraw);
+    const off = onFontsLoaded(redraw);
+    return () => {
+      off();
+      document.fonts.removeEventListener("loadingdone", redraw);
+    };
+  }, []);
 
   /* ───────────── space key for panning ───────────── */
   React.useEffect(() => {
